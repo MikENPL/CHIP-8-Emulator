@@ -1,3 +1,4 @@
+#include <SDL3/SDL_timer.h>
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
@@ -30,7 +31,7 @@ typedef struct {
   uint8_t V[16]; // Registers
   uint16_t IR;   // Index Register
   uint16_t PC;   // Program Pointer
-  int SP;    // Stack Pointer
+  int SP;        // Stack Pointer
   uint16_t stack[16];
   bool key[16];
   uint8_t timer;
@@ -43,6 +44,7 @@ typedef struct {
 
 FILE* rom;
 Chip8 app;
+uint64_t last_time;
 
 void fetch(){
   app.opcode = app.memory[app.PC] << 8 | app.memory[app.PC + 1];
@@ -132,7 +134,7 @@ void decode(){
       app.IR = app.opcode & 0x0FFF;
     break;
     case 0xB000:
-      app.PC = app.V[0] + app.opcode & 0x0FFF;
+      app.PC = app.V[0] + (app.opcode & 0x0FFF);
     break;
     case 0xC000:
       app.V[(app.opcode & 0x0F00) >> 8] = rand() & (app.opcode & 0x0FF);
@@ -166,6 +168,15 @@ void decode(){
       app.render_flag = true;
     break;
     case 0xE000:
+      if ((app.opcode & 0xF0FF) == 0xE09E) {
+        if (app.key[(app.opcode & 0x0F00) >> 8]) {
+          app.PC += 2; 
+        }
+      }else{
+        if (!app.key[(app.opcode & 0x0F00) >> 8]) {
+          app.PC += 2; 
+        }
+      }
 
     break;
     case 0xF000:
@@ -177,7 +188,7 @@ void Chip8_Start(const char* path_to_rom){
   app.PC = 0x200;
   app.SP = -1;
   srand(time(NULL));
-
+  last_time = SDL_GetPerformanceCounter();
   rom = fopen(path_to_rom, "rb");
   fseek(rom, 0L, SEEK_END);
   size_t rom_size = ftell(rom);
@@ -195,11 +206,25 @@ bool* Chip8_Get_Display(){
 bool Chip8_Get_Render_Flag(){
   return app.render_flag;
 }
+void Chip8_Set_Key(int index, bool value){
+  app.key[index] = value;
+}
+void update_timers(){
+  uint64_t current_time = SDL_GetPerformanceCounter();
+  uint64_t interval = SDL_GetPerformanceFrequency()/60;
+  while (current_time - last_time >= interval) {
+    if (app.timer > 0) {
+      app.timer--;
+    }
+    if (app.sound_timer > 0) {
+      app.sound_timer--;
+    }
+    last_time += interval;
+  }
+}
 void Chip8_Step(){
     app.render_flag = false;
     fetch();
     decode();
-}
-void Chip8_Set_Key(int index, bool value){
-  app.key[index] = value;
+    update_timers();
 }
