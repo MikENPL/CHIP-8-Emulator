@@ -8,3 +8,4 @@ void Chip8_Start(const char* rom);
 void Chip8_Step();
 bool Chip8_Get_Render_Flag();
 bool* Chip8_Get_Display();
+void Chip8_Set_Key(int index, bool value);
