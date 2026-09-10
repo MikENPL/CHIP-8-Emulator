@@ -180,6 +180,50 @@ void decode(){
 
     break;
     case 0xF000:
+      switch (app.opcode & 0x00FF) {
+        case 0x0007:
+          app.V[(app.opcode & 0x0F00) >> 8] = app.timer;
+        break;
+        case 0x000A:
+          bool key_pressed = false;
+          app.PC -= 2;
+          for (int i = 0; i < 16; i++) {
+            if (app.key[i]) {
+              key_pressed = true;
+            }
+          }
+          if (key_pressed) {
+            app.PC += 2;
+          }
+        break;
+        case 0x0015:
+          app.timer = app.V[(app.opcode & 0x0F00) >> 8];
+        break;
+        case 0x0018:
+          app.sound_timer = app.V[(app.opcode & 0x0F00) >> 8];
+        break;
+        case 0x001E:
+          app.IR += app.V[(app.opcode & 0x0F00) >> 8];
+        break;
+        case 0x0029:
+          app.IR = app.memory[app.V[(app.opcode & 0x0F00) >> 8]*5+0x50];
+        break;
+        case 0x0033:
+          app.memory[app.IR] = app.V[(app.opcode & 0x0F00) >> 8]/100;
+          app.memory[app.IR + 1] = (app.V[(app.opcode & 0x0F00) >> 8]/10)%10;
+          app.memory[app.IR + 2] =  app.V[(app.opcode & 0x0F00) >> 8]%10;
+        break;
+        case 0x0055:
+          for (int i = 0; i < (app.opcode & 0x0F00) >> 8; i++) {
+            app.memory[app.IR + i] = app.V[i];
+          }
+        break;
+        case 0x0065:
+          for (int i = 0; i < (app.opcode & 0x0F00) >> 8; i++) {
+            app.V[i] = app.memory[app.IR + i] ;
+          }
+        break;
+      }
 
     break;
   }
