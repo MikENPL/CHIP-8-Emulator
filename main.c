@@ -1,10 +1,10 @@
-//#define SDL_MAIN_USE_CALLBACKS 1 /* use the callbacks instead of main() */
-//#include <SDL3/SDL.h>
-//#include <SDL3/SDL_main.h>
+#include <SDL3/SDL.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include "chip8.h"
+#include "window.h"
 
-extern Chip8 app;
+bool running = true;
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -12,20 +12,15 @@ int main(int argc, char **argv) {
     return 1;
   }
   Chip8_Start(argv[1]);
-  while (true) {
+  Window_Start();
+  while (running) {
     Chip8_Step();
-    if (app.render_flag) {
-      for (int y = 0; y < 32; y++) {
-        for (int x = 0; x < 64; x++) {
-          if (app.display[64*y+x]) {
-            printf("#");
-          }else {
-            printf(" ");
-          }
-        }
-        printf("\n");
-      }
+    if (Chip8_Get_Render_Flag()) {
+      Window_Render_Display();
     }
+    Window_Handle_Events(&running);
   }
+  SDL_Quit();
+  return 0;
 }
 

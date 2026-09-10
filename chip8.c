@@ -1,4 +1,3 @@
-#include <stddef.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -25,6 +24,20 @@ uint8_t font[]= {
 
 };
 
+typedef struct {
+  uint8_t V[16]; // Registers
+  uint16_t IR;   // Index Register
+  uint16_t PC;   // Program Pointer
+  uint8_t SP;    // Stack Pointer
+  uint16_t stack[16];
+  uint8_t key[16];
+  uint8_t timer;
+  uint8_t sound_timer;
+  uint8_t memory[4096];
+  uint16_t opcode;
+  bool display[WIDTH*HEIGHT];
+  bool render_flag;
+}Chip8;
 
 FILE* rom;
 Chip8 app;
@@ -39,7 +52,7 @@ void decode(){
   switch (app.opcode & 0xF000) {
     case 0x0000:
       if (app.opcode == 0x00E0) {
-        memset(app.display, false, 64*32);
+        memset(app.display, false, WIDTH*HEIGHT);
         app.render_flag = true;
       }
     break;
@@ -50,13 +63,19 @@ void decode(){
 
     break;
     case 0x3000:
-
+      if (app.V[(app.opcode & 0x0F00) >> 8] == (app.opcode & 0x00FF)) {
+        app.PC += 2;
+      }
     break;
     case 0x4000:
-
+      if (app.V[(app.opcode & 0x0F00) >> 8] != (app.opcode & 0x00FF)) {
+        app.PC += 2;
+      }
     break;
     case 0x5000:
-
+      if (app.V[(app.opcode & 0x0F00) >> 8] == app.V[(app.opcode & 0x00F0) >> 4]) {
+        app.PC += 2;
+      }
     break;
     case 0x6000:
       app.V[(app.opcode & 0x0F00) >> 8] = app.opcode & 0x00FF;
@@ -74,15 +93,15 @@ void decode(){
       app.IR = app.opcode & 0x0FFF;
     break;
     case 0xB000:
-
+      app.PC = app.V[0] + app.opcode & 0x0FFF;
     break;
     case 0xC000:
 
     break;
     case 0xD000:
       uint8_t byte;
-      uint8_t x0 = app.V[(app.opcode & 0x0F00) >> 8] & 63;
-      y = app.V[(app.opcode & 0x00F0) >> 4] & 31;
+      uint8_t x0 = app.V[(app.opcode & 0x0F00) >> 8] % WIDTH;
+      y = app.V[(app.opcode & 0x00F0) >> 4] % HEIGHT;
       n = app.opcode & 0x000F;
       app.V[0xF] = 0;
       for (int i = 0; i < n; i++) {
@@ -90,18 +109,18 @@ void decode(){
         byte = app.memory[app.IR+i];
         for (int bit = 7; bit > -1; bit--){
           if ((byte >> bit) & 1){
-            if (app.display[y*64+x]){
+            if (app.display[y*WIDTH+x]){
               app.V[0xF]=1;
             }
-            app.display[y*64+x] ^= 1;
+            app.display[y*WIDTH+x] ^= 1;
           }
           x++;
-          if (x >= 64) {
+          if (x >= WIDTH) {
             break;
           }
         }
         y++;
-        if (y >= 32) {
+        if (y >= HEIGHT) {
           break;
         }
       }
@@ -128,6 +147,12 @@ void Chip8_Start(const char* path_to_rom){
   }
   fread(&app.memory[0x200], 1, rom_size, rom);
   memcpy(&app.memory[0x50],font, 80);
+}
+bool* Chip8_Get_Display(){
+  return app.display;
+}
+bool Chip8_Get_Render_Flag(){
+  return app.render_flag;
 }
 void Chip8_Step(){
     app.render_flag = false;
