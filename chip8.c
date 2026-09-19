@@ -51,6 +51,7 @@ void fetch(){
   app.PC += 2;
 }
 void decode(){
+  uint8_t flag;
   uint8_t x, y;
   uint16_t n;
   switch (app.opcode & 0xF000) {
@@ -115,16 +116,18 @@ void decode(){
           }
         break;
         case 0x0005:
-          app.V[(app.opcode & 0x0F00) >> 8] -= app.V[(app.opcode & 0x00F0) >> 4];
-          if (app.V[(app.opcode & 0x0F00) >> 8] > app.V[(app.opcode & 0x00F0) >> 4]) {
-            app.V[0xF] = 0;
+          if (app.V[(app.opcode & 0x0F00) >> 8] < app.V[(app.opcode & 0x00F0) >> 4]) {
+            flag = 0;
           } else {
-            app.V[0xF] = 1;
+            flag = 1;
           }
+          app.V[(app.opcode & 0x0F00) >> 8] -= app.V[(app.opcode & 0x00F0) >> 4];
+          app.V[0xF] = flag;
         break;
         case 0x0006:
-          app.V[0xF] = app.V[(app.opcode & 0x0F00) >> 8] & 1;
+          flag = app.V[(app.opcode & 0x0F00) >> 8] & 1;
           app.V[(app.opcode & 0x0F00) >> 8] >>= 1;
+          app.V[0xF] = flag;
         break;
         case 0x0007:
           app.V[(app.opcode & 0x0F00) >> 8] = app.V[(app.opcode & 0x00F0) >> 4] - app.V[(app.opcode & 0x0F00) >> 8] ;
@@ -135,8 +138,9 @@ void decode(){
           }
         break;
         case 0x000E:
-          app.V[0xF] = app.V[(app.opcode & 0x0F00) >> 8] >> 7;
+          flag = app.V[(app.opcode & 0x0F00) >> 8] >> 7;
           app.V[(app.opcode & 0x0F00) >> 8] <<= 1;
+          app.V[0xF] = flag; 
         break;
       }
     break;
