@@ -108,16 +108,31 @@ void decode(){
         break;
         case 0x0004:
           app.V[(app.opcode & 0x0F00) >> 8] += app.V[(app.opcode & 0x00F0) >> 4];
+          if (app.V[(app.opcode & 0x00F0) >> 4] > app.V[(app.opcode & 0x0F00) >> 8]) {
+            app.V[0xF] = 1;
+          }else {
+            app.V[0xF] = 0;
+          }
         break;
         case 0x0005:
           app.V[(app.opcode & 0x0F00) >> 8] -= app.V[(app.opcode & 0x00F0) >> 4];
+          if (app.V[(app.opcode & 0x0F00) >> 8] > app.V[(app.opcode & 0x00F0) >> 4]) {
+            app.V[0xF] = 0;
+          } else {
+            app.V[0xF] = 1;
+          }
         break;
         case 0x0006:
           app.V[0xF] = app.V[(app.opcode & 0x0F00) >> 8] & 1;
           app.V[(app.opcode & 0x0F00) >> 8] >>= 1;
         break;
         case 0x0007:
-          app.V[(app.opcode & 0x00F0) >> 4] -= app.V[(app.opcode & 0x0F00) >> 8];
+          app.V[(app.opcode & 0x0F00) >> 8] = app.V[(app.opcode & 0x00F0) >> 4] - app.V[(app.opcode & 0x0F00) >> 8] ;
+          if (app.V[(app.opcode & 0x0F00) >> 8] > app.V[(app.opcode & 0x00F0) >> 4]) {
+            app.V[0xF] = 0;
+          } else {
+            app.V[0xF] = 1;
+          }
         break;
         case 0x000E:
           app.V[0xF] = app.V[(app.opcode & 0x0F00) >> 8] >> 7;
@@ -214,12 +229,12 @@ void decode(){
           app.memory[app.IR + 2] =  app.V[(app.opcode & 0x0F00) >> 8]%10;
         break;
         case 0x0055:
-          for (int i = 0; i < (app.opcode & 0x0F00) >> 8; i++) {
+          for (int i = 0; i <= (app.opcode & 0x0F00) >> 8; i++) {
             app.memory[app.IR + i] = app.V[i];
           }
         break;
         case 0x0065:
-          for (int i = 0; i < (app.opcode & 0x0F00) >> 8; i++) {
+          for (int i = 0; i <= (app.opcode & 0x0F00) >> 8; i++) {
             app.V[i] = app.memory[app.IR + i] ;
           }
         break;
