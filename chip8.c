@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include "chip8.h"
@@ -51,7 +50,6 @@ void fetch(){
   app.PC += 2;
 }
 void decode(){
-  uint8_t flag;
   uint8_t x, y;
   uint16_t n;
   switch (app.opcode & 0xF000) {
@@ -59,17 +57,17 @@ void decode(){
       if (app.opcode == 0x00E0){
         memset(app.display, false, WIDTH*HEIGHT);
         app.render_flag = true;
-      }else {
-        app.PC = app.stack[app.SP];
+      }else { 
         app.SP--;
+        app.PC = app.stack[app.SP]; //GDB
       }
     break;
     case 0x1000:
       app.PC = app.opcode & 0x0FFF;
     break;
     case 0x2000:
-      app.SP++;
       app.stack[app.SP] = app.PC;
+      app.SP++;
       app.PC = app.opcode & 0x0FFF;
     break;
     case 0x3000:
@@ -109,38 +107,35 @@ void decode(){
         break;
         case 0x0004:
           app.V[(app.opcode & 0x0F00) >> 8] += app.V[(app.opcode & 0x00F0) >> 4];
-          if (app.V[(app.opcode & 0x00F0) >> 4] > app.V[(app.opcode & 0x0F00) >> 8]) {
+          if (app.V[(app.opcode & 0x00F0) >> 4] > (0xFF - app.V[(app.opcode & 0x0F00) >> 8])) {
             app.V[0xF] = 1;
           }else {
             app.V[0xF] = 0;
           }
         break;
         case 0x0005:
-          if (app.V[(app.opcode & 0x0F00) >> 8] < app.V[(app.opcode & 0x00F0) >> 4]) {
-            flag = 0;
-          } else {
-            flag = 1;
-          }
-          app.V[(app.opcode & 0x0F00) >> 8] -= app.V[(app.opcode & 0x00F0) >> 4];
-          app.V[0xF] = flag;
-        break;
-        case 0x0006:
-          flag = app.V[(app.opcode & 0x0F00) >> 8] & 1;
-          app.V[(app.opcode & 0x0F00) >> 8] >>= 1;
-          app.V[0xF] = flag;
-        break;
-        case 0x0007:
-          app.V[(app.opcode & 0x0F00) >> 8] = app.V[(app.opcode & 0x00F0) >> 4] - app.V[(app.opcode & 0x0F00) >> 8] ;
-          if (app.V[(app.opcode & 0x0F00) >> 8] > app.V[(app.opcode & 0x00F0) >> 4]) {
+          if (app.V[(app.opcode & 0x00F0) >> 4] > app.V[(app.opcode & 0x0F00) >> 8]) {
             app.V[0xF] = 0;
           } else {
             app.V[0xF] = 1;
           }
+          app.V[(app.opcode & 0x0F00) >> 8] -= app.V[(app.opcode & 0x00F0) >> 4];
+        break;
+        case 0x0006:
+          app.V[0xF] = app.V[(app.opcode & 0x0F00) >> 8] & 0x1;
+          app.V[(app.opcode & 0x0F00) >> 8] >>= 1;
+        break;
+        case 0x0007:
+        if (app.V[(app.opcode & 0x0F00) >> 8] > app.V[(app.opcode & 0x00F0) >> 4]) {
+          app.V[0xF] = 0;
+        } else {
+          app.V[0xF] = 1;
+        }
+        app.V[(app.opcode & 0x0F00) >> 8] = app.V[(app.opcode & 0x00F0) >> 4] - app.V[(app.opcode & 0x0F00) >> 8] ;
         break;
         case 0x000E:
-          flag = app.V[(app.opcode & 0x0F00) >> 8] >> 7;
+          app.V[0xF] = app.V[(app.opcode & 0x0F00) >> 8] >> 7;
           app.V[(app.opcode & 0x0F00) >> 8] <<= 1;
-          app.V[0xF] = flag; 
         break;
       }
     break;
@@ -156,9 +151,9 @@ void decode(){
       app.PC = app.V[0] + (app.opcode & 0x0FFF);
     break;
     case 0xC000:
-      app.V[(app.opcode & 0x0F00) >> 8] = rand() & (app.opcode & 0x0FF);
+      app.V[(app.opcode & 0x0F00) >> 8] = (rand() & (0xFF + 1)) & (app.opcode & 0x00FF);
     break;
-    case 0xD000:
+    case 0xD000: //TOCHECK
       uint8_t byte;
       uint8_t x0 = app.V[(app.opcode & 0x0F00) >> 8] % WIDTH;
       y = app.V[(app.opcode & 0x00F0) >> 4] % HEIGHT;
@@ -186,34 +181,41 @@ void decode(){
       }
       app.render_flag = true;
     break;
-    case 0xE000:
-      if ((app.opcode & 0xF0FF) == 0xE09E) {
-        if (app.key[(app.opcode & 0x0F00) >> 8]) {
-          app.PC += 2; 
-        }
-      }else{
-        if (!app.key[(app.opcode & 0x0F00) >> 8]) {
-          app.PC += 2; 
-        }
+    case 0xE000: //TOCHECK
+      switch (app.opcode & 0x00FF){
+        case 0x009E:
+          if (app.key[app.V[(app.opcode & 0x0F00) >> 8]] != 0)
+          {
+            app.PC += 2;
+          }
+        break;
+        case 0x00A1:
+          if (app.key[app.V[(app.opcode & 0x0F00) >> 8]] == 0)
+          {
+            app.PC += 2;
+          }
+        break;
       }
-
     break;
     case 0xF000:
       switch (app.opcode & 0x00FF) {
         case 0x0007:
           app.V[(app.opcode & 0x0F00) >> 8] = app.timer;
         break;
-        case 0x000A:
+        case 0x000A: //TOCHECK
           bool key_pressed = false;
           app.PC -= 2;
           for (int i = 0; i < 16; i++) {
             if (app.key[i]) {
+              app.V[(app.opcode & 0x0F00) >> 8] = i;
               key_pressed = true;
+              break;
             }
           }
-          if (key_pressed) {
-            app.PC += 2;
+          if (!key_pressed) {
+            return;
           }
+          app.PC += 2;
         break;
         case 0x0015:
           app.timer = app.V[(app.opcode & 0x0F00) >> 8];
@@ -222,10 +224,16 @@ void decode(){
           app.sound_timer = app.V[(app.opcode & 0x0F00) >> 8];
         break;
         case 0x001E:
+          if (app.IR + app.V[(app.opcode & 0x0F00) >> 8] > 0xFFF)
+          {
+            app.V[0xF] = 1;
+          }else{
+            app.V[0xF] = 0;
+          }
           app.IR += app.V[(app.opcode & 0x0F00) >> 8];
         break;
         case 0x0029:
-          app.IR = app.memory[app.V[(app.opcode & 0x0F00) >> 8]*5+0x50];
+          app.IR = app.memory[app.V[(app.opcode & 0x0F00) >> 8]* 0x5 + 0x50];
         break;
         case 0x0033:
           app.memory[app.IR] = app.V[(app.opcode & 0x0F00) >> 8]/100;
@@ -233,14 +241,15 @@ void decode(){
           app.memory[app.IR + 2] =  app.V[(app.opcode & 0x0F00) >> 8]%10;
         break;
         case 0x0055:
-          for (int i = 0; i <= (app.opcode & 0x0F00) >> 8; i++) {
+          for (int i = 0; i <= ((app.opcode & 0x0F00) >> 8); i++) {
             app.memory[app.IR + i] = app.V[i];
           }
         break;
         case 0x0065:
-          for (int i = 0; i <= (app.opcode & 0x0F00) >> 8; i++) {
+          for (int i = 0; i <= ((app.opcode & 0x0F00) >> 8); i++) {
             app.V[i] = app.memory[app.IR + i] ;
           }
+          app.IR += ((app.opcode & 0x0F00) >> 8) + 1;
         break;
       }
 
@@ -249,7 +258,7 @@ void decode(){
 }
 void Chip8_Start(const char* path_to_rom){
   app.PC = 0x200;
-  app.SP = -1;
+  app.SP = 0;
   srand(time(NULL));
   last_time = SDL_GetPerformanceCounter();
   rom = fopen(path_to_rom, "rb");
@@ -262,6 +271,7 @@ void Chip8_Start(const char* path_to_rom){
   }
   fread(&app.memory[0x200], 1, rom_size, rom);
   memcpy(&app.memory[0x50],font, 80);
+  fclose(rom);
 }
 bool* Chip8_Get_Display(){
   return app.display;
@@ -288,6 +298,7 @@ void update_timers(){
 void Chip8_Step(){
     app.render_flag = false;
     fetch();
+    //printf("Opcode: %X\n", app.opcode);
     decode();
     update_timers();
 }
