@@ -1,8 +1,8 @@
 #include <SDL3/SDL.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include "chip8.h"
 #include "window.h"
+#include "clock.h"
 
 bool running = true;
 
@@ -13,7 +13,9 @@ int main(int argc, char **argv) {
   }
   Chip8_Start(argv[1]);
   Window_Start();
+  Clock_Start();
   while (running) {
+    Clock_Update();
     Chip8_Step();
     if (Chip8_Get_Render_Flag()) {
       Window_Render_Display();
